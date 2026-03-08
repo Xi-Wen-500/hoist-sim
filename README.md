@@ -69,8 +69,8 @@ hoist-sim/
 | Stopper A              | 2.9m |
 | Stopper B              | 8.1m |
 | Wall                   | 5.0m |
-| Slow lift speed        | ~1 m/min |
-| Fast lift speed        | ~4 m/min |
+| Slow lift speed        | ~2 m/min |
+| Fast lift speed        | ~8 m/min |
 
 ## Controls
 
