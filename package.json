@@ -1,0 +1,17 @@
+{
+  "name": "hoist-sim",
+  "version": "1.0.0",
+  "description": "Interactive chain hoist tipping station simulator",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.165.0"
+  },
+  "devDependencies": {
+    "vite": "^5.3.0"
+  }
+}

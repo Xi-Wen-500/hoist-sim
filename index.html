@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hoist Simulator — Tipping Station</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/styles/main.css" />
+</head>
+<body class="sidebar-right">
+
+  <!-- ══ Three.js Canvas ══════════════════════════════════════════════════ -->
+  <canvas id="sim-canvas"></canvas>
+
+  <!-- ══ HUD top bar ══════════════════════════════════════════════════════ -->
+  <div id="hud-bar">
+    <span class="hud__brand">Hoist Sim</span>
+    <span class="hud__sub">TIPPING STATION · REV 1.0</span>
+    <div class="hud__sep"></div>
+    <div class="hud__pill" id="hud-status-pill">
+      <div class="hud__pill-dot" id="hud-dot"></div>
+      <span id="hud-status-text">READY</span>
+    </div>
+    <div class="hud__spacer"></div>
+    <!-- Keyboard legend -->
+    <div class="hud__pill hud__legend">
+      <span class="hud__key">W</span><span class="hud__key">A</span><span class="hud__key">S</span><span class="hud__key">D</span>
+      <span class="hud__key hud__key--action">⇧</span>
+      <span class="hud__key hud__key--stop">SPC</span>
+      <span class="hud__key hud__key--reset">↩</span>
+    </div>
+    <div class="hud__sep"></div>
+    <div class="hud__pill">POS&nbsp;<span id="hud-pos">8.00m</span></div>
+    <div class="hud__sep"></div>
+    <div class="hud__pill">HT&nbsp;<span id="hud-ht">1.50m</span></div>
+  </div>
+
+  <!-- ══ Sidebar ══════════════════════════════════════════════════════════ -->
+  <aside id="sidebar" class="sidebar sidebar--right">
+
+    <div class="sidebar__header">
+      <span class="sidebar__wordmark">CTRL<span class="sidebar__ver">v1.0</span></span>
+      <button id="btn-sidebar-toggle" class="icon-btn" title="Collapse">◀</button>
+    </div>
+
+    <!-- Status strip -->
+    <div class="status-strip">
+      <div class="status-item">
+        <span class="status-label">Mode</span>
+        <span class="status-value status-value--active" id="status-mode">MANUAL</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">State</span>
+        <span class="status-value status-value--ok" id="status-state">IDLE</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Height</span>
+        <span class="status-value" id="status-height">1.50m</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Position</span>
+        <span class="status-value" id="status-position">8.00m</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Location</span>
+        <span class="status-value status-value--warn" id="status-limit">HOME</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Shutter</span>
+        <span class="status-value status-value--ok" id="status-shutter">CLOSED</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Speed</span>
+        <span class="status-value" id="status-speed">SLOW</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Zone</span>
+        <span class="status-value" id="status-zone">LOW</span>
+      </div>
+    </div>
+
+    <div class="sidebar__scroll">
+      <div id="accordion-controls">
+
+        <!-- CONTROLS -->
+        <div class="accordion__section">
+          <button class="accordion__header active">
+            <span>Controls</span><span class="accordion__arrow">▾</span>
+          </button>
+          <div class="accordion__body">
+
+            <div class="mode-row">
+              <button id="btn-mode-manual" class="mode-btn mode-btn--active">Manual</button>
+              <button id="btn-mode-auto"   class="mode-btn auto">Auto</button>
+            </div>
+
+            <div id="manual-controls">
+              <div class="dpad">
+                <div class="dpad__grid">
+                  <div></div>
+                  <button class="dpad__btn" data-action="up"    title="Lift [W]">▲</button>
+                  <div></div>
+                  <button class="dpad__btn" data-action="left"  title="Left [A]">◀</button>
+                  <button class="dpad__btn dpad__btn--stop"     data-action="stop">STP</button>
+                  <button class="dpad__btn" data-action="right" title="Right [D]">▶</button>
+                  <div></div>
+                  <button class="dpad__btn" data-action="down"  title="Lower [S]">▼</button>
+                  <div></div>
+                </div>
+                <div class="dpad__key-hint">
+                  <span class="key-chip">W</span>
+                  <span class="key-chip">A</span>
+                  <span class="key-chip">S</span>
+                  <span class="key-chip">D</span>
+                  <span class="key-chip key-chip--action">⇧ FAST</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="auto-controls" style="display:none">
+              <div class="divider-label"><span>Sequence</span></div>
+              <!-- Sequence step progress bar -->
+              <div id="seq-progress-wrap" style="display:none;margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                  <span id="seq-step-label" style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim)">Step 1 of 4</span>
+                  <span id="seq-step-pct"   style="font-family:var(--font-mono);font-size:8px;color:var(--amber)">0%</span>
+                </div>
+                <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+                  <div id="seq-progress-bar"
+                       style="height:100%;background:var(--green);border-radius:2px;width:0%;transition:width 0.3s ease"></div>
+                </div>
+              </div>
+              <div class="auto-controls">
+                <button id="btn-goto-tank" class="seq-btn seq-btn--tank">→ TANK</button>
+                <button id="btn-goto-home" class="seq-btn seq-btn--home">→ HOME</button>
+              </div>
+            </div>
+
+            <div class="divider-label" style="margin-top:10px"><span>Shutter Door</span></div>
+            <button id="btn-shutter" class="seq-btn seq-btn--home" style="width:100%">
+              ⬛ OPEN SHUTTER
+            </button>
+
+          </div>
+        </div>
+
+        <!-- INTERLOCKS REFERENCE -->
+        <div class="accordion__section">
+          <button class="accordion__header">
+            <span>Interlocks</span><span class="accordion__arrow">▸</span>
+          </button>
+          <div class="accordion__body" style="display:none">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div class="interlock-row" data-il="1">
+                <span class="il-id">IL-1</span>
+                <span class="il-desc">Lift ↔ Travel mutually exclusive</span>
+              </div>
+              <div class="interlock-row" data-il="2">
+                <span class="il-id">IL-2</span>
+                <span class="il-desc">Chain ≥ H1 (9.2m) → cuts lift power</span>
+              </div>
+              <div class="interlock-row" data-il="3">
+                <span class="il-id">IL-3</span>
+                <span class="il-desc">Chain ≤ H4 (1.2m) → cuts lower power</span>
+              </div>
+              <div class="interlock-row" data-il="4">
+                <span class="il-id">IL-4</span>
+                <span class="il-desc">Pos ≤ L4 (3.1m) left → cuts travel</span>
+              </div>
+              <div class="interlock-row" data-il="5">
+                <span class="il-id">IL-5</span>
+                <span class="il-desc">Pos ≥ L1 (7.8m) right → cuts travel</span>
+              </div>
+              <div class="interlock-row" data-il="6">
+                <span class="il-id">IL-6</span>
+                <span class="il-desc">E-Stop → all motors stop, reset req.</span>
+              </div>
+              <div class="interlock-row" data-il="7">
+                <span class="il-id">IL-7</span>
+                <span class="il-desc">Shutter open → travel blocked</span>
+              </div>
+              <div class="interlock-row" data-il="7">
+                <span class="il-id">IL-7a</span>
+                <span class="il-desc">Shutter open + pos &gt; L2 → all motion blocked</span>
+              </div>
+              <div class="interlock-row" data-il="8">
+                <span class="il-id">IL-8</span>
+                <span class="il-desc">Shutter open → no auto-sequence</span>
+              </div>
+              <div class="interlock-row" data-il="9">
+                <span class="il-id">IL-9</span>
+                <span class="il-desc">Load &gt; H3 + pos &gt; L2 → shutter locked</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- UI SETTINGS -->
+        <div class="accordion__section">
+          <button class="accordion__header">
+            <span>UI Settings</span><span class="accordion__arrow">▸</span>
+          </button>
+          <div class="accordion__body" style="display:none">
+            <div class="setting-row">
+              <span class="setting-label">Panel side</span>
+              <button id="btn-panel-side" class="setting-btn">RIGHT ↔</button>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Theme</span>
+              <button id="btn-theme" class="setting-btn">DARK 🌙</button>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Font size</span>
+              <input id="slider-font" type="range" min="0" max="5" value="2" class="setting-slider" />
+            </div>
+
+            <div class="setting-row">
+              <span class="setting-label">CLI log</span>
+              <button id="btn-cli-toggle" class="setting-btn">ON ▮</button>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Resolution</span>
+              <select id="select-resolution" class="setting-select">
+                <option value="native">Native</option>
+                <option value="1920x1080">1920×1080</option>
+                <option value="1280x720">1280×720</option>
+                <option value="2560x1440">2560×1440</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Sim speed</span>
+              <div style="display:flex;align-items:center;gap:5px">
+                <input id="slider-timescale" type="range" min="1" max="60" value="6"
+                       class="setting-slider" title="Simulation speed multiplier" />
+                <span id="label-timescale" style="font-family:var(--font-mono);font-size:9px;color:var(--amber);width:28px">6×</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DISPLAY -->
+        <div class="accordion__section">
+          <button class="accordion__header">
+            <span>Display</span><span class="accordion__arrow">▸</span>
+          </button>
+          <div class="accordion__body" style="display:none">
+            <div class="setting-label" style="margin-bottom:8px">Background</div>
+            <div class="swatch-row">
+              <button class="swatch" data-color="cream"         title="Cream"    style="background:#f5f0e8;border-color:#ccc8c0"></button>
+              <button class="swatch" data-color="beige"         title="Beige"    style="background:#d4c5a9;border-color:#b0a890"></button>
+              <button class="swatch swatch--active" data-color="dark-grey"  title="Dark Grey" style="background:#2a2a2f;border-color:#3e3e44"></button>
+              <button class="swatch" data-color="midnight-blue" title="Midnight" style="background:#0f1729;border-color:#1a2438"></button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="sidebar__footer">
+      <button id="btn-estop" class="estop-btn">⚡ E-STOP</button>
+      <button id="btn-reset" class="reset-btn" disabled>↺ RESET</button>
+    </div>
+
+  </aside>
+
+  <!-- Collapsed sidebar tab -->
+  <div id="sidebar-tab" class="sidebar-tab sidebar-tab--right" style="display:none">PANEL</div>
+
+  <!-- CLI log -->
+  <div id="cli-log" class="cli-log">
+    <div id="cli-log__inner"></div>
+  </div>
+
+  <!-- Inspect panel -->
+  <div id="inspect-panel" class="inspect-panel" style="display:none">
+    <div class="inspect-panel__header">
+      <span id="inspect-title" class="inspect-panel__title">COMPONENT</span>
+      <button id="btn-inspect-close" class="icon-btn">✕</button>
+    </div>
+    <div id="inspect-body" class="inspect-panel__body"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
